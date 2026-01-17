@@ -1,17 +1,33 @@
-// Mobile Navigation Toggle
+// DOM Elements
 const hamburger = document.querySelector('.hamburger');
 const navMenu = document.querySelector('.nav-menu');
+const navbar = document.querySelector('.navbar');
+const scrollToTopBtn = document.getElementById('scroll-to-top');
+const currentYearSpan = document.getElementById('current-year');
 
-hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('active');
-    navMenu.classList.toggle('active');
-});
+// Set Current Year
+if (currentYearSpan) {
+    currentYearSpan.textContent = new Date().getFullYear();
+}
+
+// Mobile Navigation Toggle
+if (hamburger) {
+    hamburger.addEventListener('click', () => {
+        hamburger.classList.toggle('active');
+        navMenu.classList.toggle('active');
+        
+        // Accessibility
+        const expanded = hamburger.classList.contains('active');
+        hamburger.setAttribute('aria-expanded', expanded);
+    });
+}
 
 // Close mobile menu when clicking on a link
 document.querySelectorAll('.nav-menu a').forEach(link => {
     link.addEventListener('click', () => {
         hamburger.classList.remove('active');
         navMenu.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
     });
 });
 
@@ -19,7 +35,10 @@ document.querySelectorAll('.nav-menu a').forEach(link => {
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        
+        const target = document.querySelector(targetId);
         if (target) {
             const offset = 80;
             const targetPosition = target.offsetTop - offset;
@@ -31,26 +50,65 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Navbar background on scroll
-const navbar = document.querySelector('.navbar');
-let lastScroll = 0;
-
+// Scroll Event Handler (Navbar Shadow & Scroll to Top)
 window.addEventListener('scroll', () => {
-    const currentScroll = window.pageYOffset;
-    
-    if (currentScroll > 100) {
+    // Navbar Shadow
+    if (window.scrollY > 50) {
         navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+        navbar.style.padding = '0.5rem 0';
     } else {
         navbar.style.boxShadow = 'none';
+        navbar.style.padding = '1rem 0'; // Revert to original padding
+    }
+
+    // Scroll to Top Button
+    if (window.scrollY > 500) {
+        scrollToTopBtn.classList.add('show');
+    } else {
+        scrollToTopBtn.classList.remove('show');
     }
     
-    lastScroll = currentScroll;
+    // Active Navigation Link Highlighting
+    highlightActiveNavLink();
 });
+
+// Scroll to Top Action
+if (scrollToTopBtn) {
+    scrollToTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+// Active Nav Link Highlighter
+function highlightActiveNavLink() {
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-menu a');
+    
+    let current = '';
+    
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (window.scrollY >= (sectionTop - 200)) {
+            current = section.getAttribute('id');
+        }
+    });
+
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href').slice(1) === current) {
+            link.classList.add('active');
+        }
+    });
+}
 
 // Intersection Observer for fade-in animations
 const observerOptions = {
     threshold: 0.1,
-    rootMargin: '0px 0px -100px 0px'
+    rootMargin: '0px 0px -50px 0px'
 };
 
 const observer = new IntersectionObserver((entries) => {
@@ -58,6 +116,7 @@ const observer = new IntersectionObserver((entries) => {
         if (entry.isIntersecting) {
             entry.target.style.opacity = '1';
             entry.target.style.transform = 'translateY(0)';
+            observer.unobserve(entry.target); // Only animate once
         }
     });
 }, observerOptions);
@@ -70,76 +129,52 @@ document.querySelectorAll('.project-card, .skill-category, .stat-card, .contact-
     observer.observe(el);
 });
 
-// Active nav link on scroll
-const sections = document.querySelectorAll('section');
-const navLinks = document.querySelectorAll('.nav-menu a');
+// Typing Effect
+const typingTextElement = document.querySelector('.typing-text');
+const textsToType = [
+    "Software Engineer", 
+    "Backend Developer", 
+    "System Architect", 
+    "Open Source Enthusiast"
+];
+let textIndex = 0;
+let charIndex = 0;
+let isDeleting = false;
+let typeSpeed = 100;
 
-window.addEventListener('scroll', () => {
-    let current = '';
+function typeEffect() {
+    if (!typingTextElement) return;
+
+    const currentText = textsToType[textIndex];
     
-    sections.forEach(section => {
-        const sectionTop = section.offsetTop;
-        const sectionHeight = section.clientHeight;
-        if (pageYOffset >= (sectionTop - 200)) {
-            current = section.getAttribute('id');
-        }
-    });
-
-    navLinks.forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href').slice(1) === current) {
-            link.classList.add('active');
-        }
-    });
-});
-
-// Add typing effect to hero title (optional enhancement)
-const heroTitle = document.querySelector('.hero-title');
-if (heroTitle) {
-    const text = heroTitle.innerHTML;
-    heroTitle.innerHTML = '';
-    let i = 0;
-    
-    function typeWriter() {
-        if (i < text.length) {
-            heroTitle.innerHTML += text.charAt(i);
-            i++;
-            setTimeout(typeWriter, 50);
-        }
+    if (isDeleting) {
+        typingTextElement.textContent = currentText.substring(0, charIndex - 1);
+        charIndex--;
+        typeSpeed = 50; // Faster when deleting
+    } else {
+        typingTextElement.textContent = currentText.substring(0, charIndex + 1);
+        charIndex++;
+        typeSpeed = 100; // Normal typing speed
     }
-    
-    // Uncomment the line below if you want the typing effect
-    // typeWriter();
+
+    if (!isDeleting && charIndex === currentText.length) {
+        // Finished typing current text
+        isDeleting = true;
+        typeSpeed = 2000; // Pause at end
+    } else if (isDeleting && charIndex === 0) {
+        // Finished deleting
+        isDeleting = false;
+        textIndex = (textIndex + 1) % textsToType.length;
+        typeSpeed = 500; // Pause before starting next
+    }
+
+    setTimeout(typeEffect, typeSpeed);
 }
 
-// Add particle effect background (optional - lightweight version)
-function createParticle() {
-    const particle = document.createElement('div');
-    particle.style.position = 'fixed';
-    particle.style.width = '2px';
-    particle.style.height = '2px';
-    particle.style.background = 'rgba(99, 102, 241, 0.5)';
-    particle.style.borderRadius = '50%';
-    particle.style.pointerEvents = 'none';
-    particle.style.left = Math.random() * window.innerWidth + 'px';
-    particle.style.top = '-10px';
-    particle.style.zIndex = '1';
-    
-    document.body.appendChild(particle);
-    
-    const duration = Math.random() * 3000 + 2000;
-    const drift = (Math.random() - 0.5) * 100;
-    
-    particle.animate([
-        { transform: 'translateY(0) translateX(0)', opacity: 0 },
-        { transform: `translateY(${window.innerHeight}px) translateX(${drift}px)`, opacity: 1 }
-    ], {
-        duration: duration,
-        easing: 'linear'
-    }).onfinish = () => particle.remove();
-}
-
-// Create particles occasionally (optional - uncomment to enable)
-// setInterval(createParticle, 300);
+// Initialize Typing Effect
+document.addEventListener('DOMContentLoaded', () => {
+    // Start typing effect after a short delay
+    setTimeout(typeEffect, 1000);
+});
 
 console.log('🚀 Portfolio website loaded successfully!');
